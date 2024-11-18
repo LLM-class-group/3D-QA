@@ -1,0 +1,5 @@
+/Pointnet2_PyTorch/*
+/LLaVA-Next/*
+/ShapeLLM/checkpoints/recon/*
+*.pyc
+*/__pycache__/
