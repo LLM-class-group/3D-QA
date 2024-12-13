@@ -1,12 +1,15 @@
 import cv2
 import numpy as np
 import pickle
+import io
+import base64
 from plyfile import PlyData
 from scipy.spatial import distance
 from scipy.ndimage import median_filter, uniform_filter
 from skimage.measure import marching_cubes
 from scipy.spatial import KDTree
 from plyfile import PlyData
+from PIL import Image
 
 def load(path, separator=','):
     extension = path.split('.')[-1]
@@ -390,3 +393,32 @@ def get_xml(resolution=[1920, 1080], view=[3, 3, 3], radius=0.025, object_type="
     assert object_type == "point" or object_type == "voxel"
     xml_object_segment = xml_ball_segment if object_type == "point" else xml_cube_segment
     return xml_head, xml_object_segment, xml_tail
+
+def encode_image(image_path):
+    try:
+        with Image.open(image_path) as image:
+            buffered = io.BytesIO()
+            image.save(buffered, format="PNG")
+            return base64.b64encode(buffered.getvalue()).decode('utf-8')
+    except Exception as e:
+        raise ValueError(f"无法编码图片，错误信息：{e}")
+
+def get_mllm_messages(prompt, base64_image):
+    messages = [
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:image/jpeg;base64,{base64_image}"
+                    },
+                },
+                {
+                    "type": "text",
+                    "text": prompt,
+                },
+            ],
+        },
+    ]
+    return messages
