@@ -11,6 +11,9 @@ from scipy.spatial import KDTree
 from plyfile import PlyData
 from PIL import Image
 
+DETAIL_OUTPUT = False
+
+
 def load(path, separator=','):
     extension = path.split('.')[-1]
     if extension == 'npy':
@@ -41,15 +44,16 @@ def load(path, separator=','):
         import torch
         pcl = torch.load(path, map_location='cpu')
         pcl = pcl.detach().numpy()
-    elif extension == 'pkl':  
+    elif extension == 'pkl':
         with open(path, 'rb') as f:
             data = pickle.load(f)
         if isinstance(data, dict) and 'points' in data:
-            pcl = np.array(data['points'])  
+            pcl = np.array(data['points'])
         elif isinstance(data, np.ndarray):
-            pcl = data  
+            pcl = data
         else:
-            raise ValueError("Unsupported .pkl format. Expected dict with 'points' key or NumPy array.")
+            raise ValueError(
+                "Unsupported .pkl format. Expected dict with 'points' key or NumPy array.")
     else:
         print('unsupported file format.')
         raise FileNotFoundError
@@ -71,14 +75,17 @@ def color_map(config, pcl):
     n, c = pcl.shape
 
     if config.white:
-        print("Rendered with white color.")
+        if DETAIL_OUTPUT:
+            print("Rendered with white color.")
         color = np.ones((n, 3)) * 0.6
     elif len(config.RGB) == 3:
-        print("Rendered with input RGB color.")
+        if DETAIL_OUTPUT:
+            print("Rendered with input RGB color.")
         rgb = np.array(list(map(float, config.RGB))) / 255
         color = np.tile(rgb, (n, 1))
     elif c == 6:
-        print("Rendered with points color.")
+        if DETAIL_OUTPUT:
+            print("Rendered with points color.")
         color = pcl[:, 3:]
         if color.max() > 1 + 1e-2:
             color = color / 255
@@ -97,7 +104,8 @@ def color_map(config, pcl):
         color = np.zeros((n, 3))
         knn_center = fps(pcl + 0.5, config.center_num)
         for i in range(n):
-            color[i] = generate_knn_pos_colormap(pcl[i] + 0.5, config, knn_center)
+            color[i] = generate_knn_pos_colormap(
+                pcl[i] + 0.5, config, knn_center)
     else:
         print("Rendered with position color.")
         color = np.zeros((n, 3))
@@ -120,8 +128,10 @@ def mask_point(pcl, mask_center=128, mask_ratio=0.5):
 
 
 def load_self_colormap(value):
-    vec = np.power(value, 2)  # You can adjust the Level Curve with gamma transformation
-    vec = 255 - 255 * (vec - np.min(vec)) / (np.max(vec) - np.min(vec))  # normalize to [0, 255]
+    # You can adjust the Level Curve with gamma transformation
+    vec = np.power(value, 2)
+    vec = 255 - 255 * (vec - np.min(vec)) / (np.max(vec) -
+                                             np.min(vec))  # normalize to [0, 255]
     vec = vec.reshape(1, -1).astype(np.uint8)
     vec = cv2.applyColorMap(vec, cv2.COLORMAP_JET)  # apply colormap
     color = vec.reshape(-1, 3) / 255  # normalize to [0, 1]
@@ -158,7 +168,8 @@ def standardize_bbox(config, data):
     center = (mins + maxs) / 2.
     scale = np.amax(maxs - mins)
     xyz = ((xyz - center) / scale).astype(np.float32)  # [-0.5, 0.5]
-    print("Center: {}, Scale: {}".format(center, scale))
+    if DETAIL_OUTPUT:
+        print("Center: {}, Scale: {}".format(center, scale))
 
     if data.shape[-1] > 3:
         pcl = np.concatenate((xyz, data[:, 3:]), axis=1)
@@ -205,7 +216,8 @@ def median_filter_3d(pcl, channel=3, voxel_size=64, kernel_size=2, level=0.5, ti
         new_pcl = np.zeros((N, channel))
         if channel == 6:
             for i in range(N):
-                distances = distance.cdist(median_pcl[i, :3], pcl[:, :3], 'euclidean')
+                distances = distance.cdist(
+                    median_pcl[i, :3], pcl[:, :3], 'euclidean')
                 index = np.argmin(distances)
                 new_pcl[i, :3] = median_pcl[i, :3]
                 new_pcl[i, 3:] = pcl[index, 3:]
@@ -246,9 +258,12 @@ def rotation(rotation_angle):
     print(f'rotation angle: {x}, {y}, {z}')
     x_rad, y_rad, z_rad = np.radians(x), np.radians(y), np.radians(z)
 
-    rot_x = np.array([[1, 0, 0], [0, np.cos(x_rad), -np.sin(x_rad)], [0, np.sin(x_rad), np.cos(x_rad)]])
-    rot_y = np.array([[np.cos(y_rad), 0, np.sin(y_rad)], [0, 1, 0], [-np.sin(y_rad), 0, np.cos(y_rad)]])
-    rot_z = np.array([[np.cos(z_rad), -np.sin(z_rad), 0], [np.sin(z_rad), np.cos(z_rad), 0], [0, 0, 1]])
+    rot_x = np.array([[1, 0, 0], [0, np.cos(x_rad), -
+                     np.sin(x_rad)], [0, np.sin(x_rad), np.cos(x_rad)]])
+    rot_y = np.array([[np.cos(y_rad), 0, np.sin(y_rad)], [
+                     0, 1, 0], [-np.sin(y_rad), 0, np.cos(y_rad)]])
+    rot_z = np.array([[np.cos(z_rad), -np.sin(z_rad), 0],
+                     [np.sin(z_rad), np.cos(z_rad), 0], [0, 0, 1]])
 
     rot_matrix = np.dot(np.dot(rot_z, rot_y), rot_x)
     return rot_matrix
@@ -270,7 +285,8 @@ def interpolate_point_cloud(points, k=2):
     new_points = alphas * original_points + (1 - alphas) * neighbor_points
     new_attrs = alphas * original_attrs + (1 - alphas) * neighbor_attrs
 
-    new_points = np.concatenate([new_points, new_attrs], axis=2).reshape(-1, points.shape[1])
+    new_points = np.concatenate(
+        [new_points, new_attrs], axis=2).reshape(-1, points.shape[1])
 
     return np.vstack((points, new_points))
 
@@ -281,7 +297,8 @@ def filter_point_cloud(point_cloud, angle_threshold_degrees=90, fix=False):
 
     # Center the point cloud at the origin and normalize
     center = np.mean(xyz, axis=0)
-    normalized_xyz = (xyz - center) / np.linalg.norm(xyz - center, axis=1)[:, np.newaxis]
+    normalized_xyz = (xyz - center) / np.linalg.norm(xyz -
+                                                     center, axis=1)[:, np.newaxis]
 
     # Randomly select a point within a sphere of radius
     if fix:
@@ -298,7 +315,8 @@ def filter_point_cloud(point_cloud, angle_threshold_degrees=90, fix=False):
     angles = np.arccos(clipped_dot_product)
 
     # Filter points based on the angle threshold
-    filtered_indices = np.where(np.degrees(angles) < angle_threshold_degrees)[0]
+    filtered_indices = np.where(np.degrees(
+        angles) < angle_threshold_degrees)[0]
 
     # Keep only the selected points
     selected_points = point_cloud[filtered_indices]
@@ -394,7 +412,10 @@ def get_xml(resolution=[1920, 1080], view=[3, 3, 3], radius=0.025, object_type="
     xml_object_segment = xml_ball_segment if object_type == "point" else xml_cube_segment
     return xml_head, xml_object_segment, xml_tail
 
+
 def encode_image(image_path):
+    if image_path is None:
+        return None
     try:
         with Image.open(image_path) as image:
             buffered = io.BytesIO()
@@ -403,22 +424,37 @@ def encode_image(image_path):
     except Exception as e:
         raise ValueError(f"无法编码图片，错误信息：{e}")
 
-def get_mllm_messages(prompt, base64_image):
-    messages = [
-        {
-            "role": "user",
-            "content": [
-                {
-                    "type": "image_url",
-                    "image_url": {
-                        "url": f"data:image/jpeg;base64,{base64_image}"
+
+def get_mllm_messages(prompt, base64_image=None):
+    if base64_image is None:
+        messages = [
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": prompt,
+                    }
+                ],
+            }
+        ]
+    else:
+        messages = [
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:image/jpeg;base64,{base64_image}"
+                        },
                     },
-                },
-                {
-                    "type": "text",
-                    "text": prompt,
-                },
-            ],
-        },
-    ]
+                    {
+                        "type": "text",
+                        "text": prompt,
+                    },
+                ],
+            },
+        ]
+
     return messages
