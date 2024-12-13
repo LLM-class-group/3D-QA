@@ -1,11 +1,12 @@
 import cv2
 import numpy as np
+import pickle
 from plyfile import PlyData
 from scipy.spatial import distance
 from scipy.ndimage import median_filter, uniform_filter
 from skimage.measure import marching_cubes
 from scipy.spatial import KDTree
-
+from plyfile import PlyData
 
 def load(path, separator=','):
     extension = path.split('.')[-1]
@@ -37,6 +38,15 @@ def load(path, separator=','):
         import torch
         pcl = torch.load(path, map_location='cpu')
         pcl = pcl.detach().numpy()
+    elif extension == 'pkl':  
+        with open(path, 'rb') as f:
+            data = pickle.load(f)
+        if isinstance(data, dict) and 'points' in data:
+            pcl = np.array(data['points'])  
+        elif isinstance(data, np.ndarray):
+            pcl = data  
+        else:
+            raise ValueError("Unsupported .pkl format. Expected dict with 'points' key or NumPy array.")
     else:
         print('unsupported file format.')
         raise FileNotFoundError

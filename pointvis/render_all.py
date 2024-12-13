@@ -4,15 +4,15 @@ from types import SimpleNamespace
 from utils import load, standardize_bbox, color_map, rotation
 from render import render
 import numpy as np
-
-images_dir = '/Users/henryhe/code/3D-QA/eval/3d-mm-vet/images'
+import time
+images_dir = ''
 
 
 def render_point_cloud_to_image(point_file):
     # 确保输出目录存在
     os.makedirs(images_dir, exist_ok=True)
     # 构建输出路径
-    output_file_name = os.path.splitext(os.path.basename(point_file))[0] + '-2.png'
+    output_file_name = os.path.splitext(os.path.basename(point_file))[0] + '.png'
     output_path = os.path.join(images_dir, output_file_name)
     # 如果图片已存在则直接返回
     if os.path.exists(output_path):
@@ -70,16 +70,18 @@ def render_point_cloud_to_image(point_file):
 
 def render_all_point_clouds(point_folder):
     # 遍历文件夹中的所有点云文件（倒序）
+    num = 0
     for point_file in sorted(os.listdir(point_folder), reverse=True):
-        if point_file.endswith('.npy'):
+        num += 1
+        if point_file.endswith('.npy') or point_file.endswith('.pkl'):
             point_path = os.path.join(point_folder, point_file)
-            print(f"正在渲染: {point_file}")
+            print(f"正在渲染第{num}个点云: {point_file}, 时间: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time()))}")
             # 渲染点云图像
             render_point_cloud_to_image(point_path)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--point-folder", type=str, default="/Users/henryhe/code/3D-QA/eval/3d-mm-vet/points")
+    parser.add_argument("--point-folder", type=str, default="")
     args = parser.parse_args()
 
     render_all_point_clouds(args.point_folder)
