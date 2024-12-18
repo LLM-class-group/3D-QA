@@ -324,41 +324,74 @@ def filter_point_cloud(point_cloud, angle_threshold_degrees=90, fix=False):
     return selected_points
 
 
-def get_xml(resolution=[1920, 1080], view=[3, 3, 3], radius=0.025, object_type="point"):
+def get_xml(resolution=[1920, 1080], view=[3, 3, 3], radius=0.025, object_type="point", BEV=False):
     width, height = int(resolution[0]), int(resolution[1])
     x, y, z = float(view[0]), float(view[1]), float(view[2])
     position = f"{x}, {y}, {z}"
-    xml_head = \
-        f"""
-    <scene version="0.6.0">
-        <integrator type="path">
-            <integer name="maxDepth" value="-1"/>
-        </integrator>
-        <sensor type="perspective">
-            <float name="farClip" value="100"/>
-            <float name="nearClip" value="0.1"/>
-            <transform name="toWorld">
-                <lookat origin="{position}" target="0,0,0" up="0,0,1"/>
-            </transform>
-            <float name="fov" value="25"/>
-            <sampler type="independent">
-                <integer name="sampleCount" value="256"/>
-            </sampler>
-            <film type="hdrfilm">
-                <integer name="width" value="{width}"/>
-                <integer name="height" value="{height}"/>
-                <rfilter type="gaussian"/>
-            </film>
-        </sensor>
+    if BEV:
+        xml_head = \
+            f"""
+        <scene version="0.6.0">
+            <integrator type="path">
+                <integer name="maxDepth" value="-1"/>
+            </integrator>
+            <sensor type="perspective">
+                <float name="farClip" value="100"/>
+                <float name="nearClip" value="0.1"/>
+                <transform name="toWorld">
+                    <lookat origin="{position}" target="0,0,0" up="0,1,0"/>
+                </transform>
+                <float name="fov" value="25"/>
+                <sampler type="independent">
+                    <integer name="sampleCount" value="256"/>
+                </sampler>
+                <film type="hdrfilm">
+                    <integer name="width" value="{width}"/>
+                    <integer name="height" value="{height}"/>
+                    <rfilter type="gaussian"/>
+                </film>
+            </sensor>
 
-        <bsdf type="roughplastic" id="surfaceMaterial">
-            <string name="distribution" value="ggx"/>
-            <float name="alpha" value="0.05"/>
-            <float name="intIOR" value="1.46"/>
-            <rgb name="diffuseReflectance" value="1,1,1"/> <!-- default 0.5 -->
-        </bsdf>
+            <bsdf type="roughplastic" id="surfaceMaterial">
+                <string name="distribution" value="ggx"/>
+                <float name="alpha" value="0.05"/>
+                <float name="intIOR" value="1.46"/>
+                <rgb name="diffuseReflectance" value="1,1,1"/> <!-- default 0.5 -->
+            </bsdf>
 
-    """
+        """
+    else:
+        xml_head = \
+            f"""
+        <scene version="0.6.0">
+            <integrator type="path">
+                <integer name="maxDepth" value="-1"/>
+            </integrator>
+            <sensor type="perspective">
+                <float name="farClip" value="100"/>
+                <float name="nearClip" value="0.1"/>
+                <transform name="toWorld">
+                    <lookat origin="{position}" target="0,0,0" up="0,0,1"/>
+                </transform>
+                <float name="fov" value="25"/>
+                <sampler type="independent">
+                    <integer name="sampleCount" value="256"/>
+                </sampler>
+                <film type="hdrfilm">
+                    <integer name="width" value="{width}"/>
+                    <integer name="height" value="{height}"/>
+                    <rfilter type="gaussian"/>
+                </film>
+            </sensor>
+
+            <bsdf type="roughplastic" id="surfaceMaterial">
+                <string name="distribution" value="ggx"/>
+                <float name="alpha" value="0.05"/>
+                <float name="intIOR" value="1.46"/>
+                <rgb name="diffuseReflectance" value="1,1,1"/> <!-- default 0.5 -->
+            </bsdf>
+
+        """
 
     xml_ball_segment = \
         """

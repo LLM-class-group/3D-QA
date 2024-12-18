@@ -5,7 +5,7 @@ import mitsuba as mi
 from utils import standardize_bbox, generate_pos_colormap, get_xml, fps, mask_point
 
 
-def render(config, pcl):
+def render(config, pcl, BEV=False):
     file_name = config.path.split('.')[0]
     pcl[:, 2] *= -1
     pcl[:, 1] -= min(pcl[:, 1]) + 0.25
@@ -13,7 +13,7 @@ def render(config, pcl):
     if config.mask:
         pcl = mask_point(pcl)
 
-    xml_head, xml_object_segment, xml_tail = get_xml(config.res, config.view, config.radius, config.type)
+    xml_head, xml_object_segment, xml_tail = get_xml(config.res, config.view, config.radius, config.type, BEV)
     xml_segments = [xml_head]
 
     translate = list(map(float, config.translate))
@@ -42,7 +42,7 @@ def render(config, pcl):
     os.remove(xmlFile)
 
 
-def render_part(config, pcl):
+def render_part(config, pcl, BEV=False):
     file_name = config.path.split('.')[0]
     pcl = pcl[:, [2, 0, 1]]
     pcl[:, 0] *= -1
@@ -65,7 +65,7 @@ def render_part(config, pcl):
 
     for i in range(config.center_num):
         knn_patch = np.array(pcl_list[i])
-        xml_head, xml_object_segment, xml_tail = get_xml(config.res, config.view, config.radius, config.type)
+        xml_head, xml_object_segment, xml_tail = get_xml(config.res, config.view, config.radius, config.type, BEV)
         xml_segments = [xml_head]
 
         knn_patch = standardize_bbox(knn_patch)
