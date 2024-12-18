@@ -18,22 +18,22 @@ class VLM3D:
         self.model_name = client.models.list().data[0].id
         print(f"Using model: {self.model_name}")
 
-    def response(self, prompt, point_file=None, image_path=None):
+    def response(self, prompt, point_file=None, image_path=None, BEV=False):
         """
         Support for 3D & 2D & pure text input
         """
         if point_file:
-            image_path = self.render(point_file)
+            image_path = self.render(point_file, BEV)
 
         base64_image = encode_image(image_path)
         messages = get_mllm_messages(prompt, base64_image)
         return self._get_response(messages)
 
-    def batch_response(self, prompts, point_files):
+    def batch_response(self, prompts, point_files, BEV=False):
         """
         Support for 3D & 2D & pure text input with parallel processing
         """
-        image_paths = [self.render(point_file) for point_file in point_files]
+        image_paths = [self.render(point_file, BEV) for point_file in point_files]
         base64_images = [encode_image(image_path)
                          for image_path in image_paths]
         batch_messages = [get_mllm_messages(prompt, base64_image)
@@ -48,7 +48,7 @@ class VLM3D:
 
         return results
 
-    def render(self, point_file):
+    def render(self, point_file, BEV=False):
         """
         Render point cloud to image
 
@@ -93,6 +93,10 @@ class VLM3D:
                 bbox='none'            # 实时工具边界框可视化
             )
 
+            if BEV:
+                config.view = [0, 0, 2]
+                config.rot = [90, 0, 20]
+
             # 加载点云数据
             pcl = load(point_file, separator=",")
             # 标准化点云
@@ -100,7 +104,7 @@ class VLM3D:
             # 设置点云颜色
             pcl = color_map(config, pcl)
             # 渲染点云
-            render(config, pcl)
+            render(config, pcl, BEV)
             if DETAIL_OUTPUT:
                 print(f"Rendered {point_file} to {image_path}")
         elif DETAIL_OUTPUT:
