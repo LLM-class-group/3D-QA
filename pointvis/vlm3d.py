@@ -7,7 +7,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 DETAIL_OUTPUT = False
 OVERWRITE_IMAGE = False     # 重新渲染图片
-CONCURRENT_REQUESTS = 8     # VLM并发请求数
+CONCURRENT_REQUESTS = 10     # VLM并发请求数
 current_dir = os.path.dirname(os.path.abspath(__file__))
 images_dir = os.path.join(current_dir, 'cached_images')
 
@@ -29,22 +29,28 @@ class VLM3D:
         messages = get_mllm_messages(prompt, base64_image)
         return self._get_response(messages)
 
-    def batch_response(self, prompts, point_files, BEV=False):
+    def batch_response(self, prompts, point_files=None, image_paths=None, BEV=False):
         """
         Support for 3D & 2D & pure text input with parallel processing
         """
-        image_paths = [self.render(point_file, BEV) for point_file in point_files]
+        if image_paths is None:
+            image_paths = [self.render(point_file, BEV) for point_file in point_files]
         base64_images = [encode_image(image_path)
                          for image_path in image_paths]
         batch_messages = [get_mllm_messages(prompt, base64_image)
                           for prompt, base64_image in zip(prompts, base64_images)]
 
-        results = []
+        results = [None] * len(batch_messages)  # 预分配结果列表
         with ThreadPoolExecutor(max_workers=CONCURRENT_REQUESTS) as executor:
-            futures = [executor.submit(self._get_response, messages) for messages in batch_messages]
-            # 等待所有任务完成并获取结果
-            for future in as_completed(futures):
-                results.append(future.result())
+            # 创建future到索引的映射
+            future_to_index = {
+                executor.submit(self._get_response, messages): i 
+                for i, messages in enumerate(batch_messages)
+            }
+            # 按完成顺序获取结果，但存储到正确的位置
+            for future in as_completed(future_to_index):
+                index = future_to_index[future]
+                results[index] = future.result()
 
         return results
 
